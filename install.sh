@@ -1,27 +1,40 @@
 #!/usr/bin/env bash
 set -euo pipefail
+[[ $EUID -eq 0 ]] || exit 1
+install -d -m 755 /opt/csvoidx-user-manager
+cat > /opt/csvoidx-user-manager/manager.sh <<'MANAGER_EOF'
+#!/usr/bin/env bash
 
-if [[ $EUID -ne 0 ]]; then
-    echo "Please run with sudo."
-    exit 1
-fi
+while true; do
+    clear
+    printf '\033[1;36m'
+    echo "========================================"
+    echo "       CSVOIDX SSH USER MANAGER"
+    echo "                V1.0"
+    echo "========================================"
+    printf '\033[0m'
 
-echo "CSVOIDX SSH User Manager"
-echo "Checking system requirements..."
+    echo " [01] System Information"
+    echo " [02] Local User List"
+    echo " [03] SSH Service Status"
+    echo " [00] Exit"
+    echo "----------------------------------------"
 
-for cmd in useradd userdel passwd chage getent; do
-    command -v "$cmd" >/dev/null || {
-        echo "Missing dependency: $cmd"
-        exit 1
-    }
+    read -rp "Select Option: " option
+
+    case "$option" in
+        1) hostnamectl ;;
+        2) getent passwd | awk -F: '$3 >= 1000 && $3 < 60000 {print $1}' ;;
+        3) systemctl status ssh --no-pager ;;
+        0|00) exit 0 ;;
+        *) echo "Invalid option" ;;
+    esac
+
+    read -rp "Press Enter to continue..."
 done
 
-echo "System requirements: OK"
-echo "SSH configuration unchanged."
-
-install -d -m 755 /opt/csvoidx-user-manager
-install -m 755 "$(dirname "$0")/manager.sh" /opt/csvoidx-user-manager/manager.sh
+MANAGER_EOF
+chmod 755 /opt/csvoidx-user-manager/manager.sh
 ln -sfn /opt/csvoidx-user-manager/manager.sh /usr/local/bin/csvoidx-user
-
 echo "CSVOIDX Installation Successful"
 echo "Run: csvoidx-user"
